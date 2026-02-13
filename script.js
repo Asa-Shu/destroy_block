@@ -29,9 +29,11 @@ const restartBtn = document.getElementById("restartBtn");
 let board = [];
 let pieceSlots = [];
 let selectedSlot = null;
+let draggingSlot = null;
 let score = 0;
 let best = Number(localStorage.getItem("blockBlastBest") || 0);
 let gameOver = false;
+let isResolvingTurn = false;
 
 function createBoard() {
   board = Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
@@ -46,7 +48,16 @@ function createBoard() {
       cell.dataset.y = y;
       cell.addEventListener("mouseenter", () => showPreview(x, y));
       cell.addEventListener("mouseleave", clearPreview);
-      cell.addEventListener("click", () => placeSelectedPiece(x, y));
+      cell.addEventListener("click", () => placePieceFromSlot(selectedSlot, x, y));
+      cell.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        showPreview(x, y, draggingSlot);
+      });
+      cell.addEventListener("dragleave", clearPreview);
+      cell.addEventListener("drop", (event) => {
+        event.preventDefault();
+        placePieceFromSlot(draggingSlot, x, y);
+      });
       boardEl.appendChild(cell);
     }
   }
@@ -70,11 +81,16 @@ function renderPieces() {
     const wrapper = document.createElement("button");
     wrapper.type = "button";
     wrapper.className = "piece";
+    wrapper.draggable = Boolean(piece);
     if (index === selectedSlot) wrapper.classList.add("selected");
 
     if (!piece) {
       wrapper.disabled = true;
-      wrapper.textContent = "使用済み";
+      wrapper.classList.add("used");
+      const usedLabel = document.createElement("span");
+      usedLabel.className = "used-label";
+      usedLabel.textContent = "使用済み";
+      wrapper.appendChild(usedLabel);
       piecesEl.appendChild(wrapper);
       return;
     }
@@ -83,7 +99,21 @@ function renderPieces() {
       selectedSlot = selectedSlot === index ? null : index;
       renderPieces();
       clearPreview();
-      statusEl.textContent = selectedSlot === null ? "" : "配置場所をクリック";
+      statusEl.textContent = selectedSlot === null ? "" : "配置場所をクリック or ドラッグ";
+    });
+
+    wrapper.addEventListener("dragstart", (event) => {
+      draggingSlot = index;
+      selectedSlot = index;
+      renderPieces();
+      statusEl.textContent = "盤面にドロップして配置";
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(index));
+    });
+
+    wrapper.addEventListener("dragend", () => {
+      draggingSlot = null;
+      clearPreview();
     });
 
     const grid = document.createElement("div");
@@ -123,11 +153,11 @@ function isValidPlacement(piece, originX, originY) {
   });
 }
 
-function showPreview(originX, originY) {
+function showPreview(originX, originY, slotIndex = selectedSlot) {
   clearPreview();
-  if (selectedSlot === null) return;
+  if (slotIndex === null) return;
 
-  const piece = pieceSlots[selectedSlot];
+  const piece = pieceSlots[slotIndex];
   if (!piece) return;
 
   const valid = isValidPlacement(piece, originX, originY);
@@ -156,7 +186,11 @@ function updateBoardVisual() {
   }
 }
 
-function clearLines() {
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function clearLines() {
   const fullRows = [];
   const fullCols = [];
 
@@ -168,6 +202,24 @@ function clearLines() {
     if (board.every((row) => row[x] === 1)) fullCols.push(x);
   }
 
+  const toClear = new Set();
+  fullRows.forEach((row) => {
+    for (let x = 0; x < BOARD_SIZE; x++) toClear.add(`${x},${row}`);
+  });
+  fullCols.forEach((col) => {
+    for (let y = 0; y < BOARD_SIZE; y++) toClear.add(`${col},${y}`);
+  });
+
+  const lines = fullRows.length + fullCols.length;
+  if (lines === 0) return;
+
+  toClear.forEach((point) => {
+    const [x, y] = point.split(",").map(Number);
+    boardCell(x, y)?.classList.add("clear-burst");
+  });
+
+  await sleep(180);
+
   fullRows.forEach((row) => {
     for (let x = 0; x < BOARD_SIZE; x++) board[row][x] = 0;
   });
@@ -176,17 +228,19 @@ function clearLines() {
     for (let y = 0; y < BOARD_SIZE; y++) board[y][col] = 0;
   });
 
-  const lines = fullRows.length + fullCols.length;
-  if (lines > 0) {
-    score += lines * 25;
-    statusEl.textContent = `${lines}ライン消去！`;
-  }
+  score += lines * 25;
+  statusEl.textContent = `${lines}ライン消去！`;
+  updateBoardVisual();
+
+  boardEl.querySelectorAll(".clear-burst").forEach((cell) => {
+    cell.classList.remove("clear-burst");
+  });
 }
 
-function placeSelectedPiece(originX, originY) {
-  if (gameOver || selectedSlot === null) return;
+async function placePieceFromSlot(slotIndex, originX, originY) {
+  if (gameOver || isResolvingTurn || slotIndex === null) return;
 
-  const piece = pieceSlots[selectedSlot];
+  const piece = pieceSlots[slotIndex];
   if (!piece) return;
 
   if (!isValidPlacement(piece, originX, originY)) {
@@ -194,21 +248,26 @@ function placeSelectedPiece(originX, originY) {
     return;
   }
 
+  isResolvingTurn = true;
+
   piece.blocks.forEach(([dx, dy]) => {
     board[originY + dy][originX + dx] = 1;
   });
 
   score += piece.blocks.length;
-  pieceSlots[selectedSlot] = null;
+  pieceSlots[slotIndex] = null;
   selectedSlot = null;
+  draggingSlot = null;
 
-  clearLines();
-  refillPieces();
   updateBoardVisual();
+  await clearLines();
+  refillPieces();
   renderPieces();
   updateScore();
   clearPreview();
   checkGameOver();
+
+  isResolvingTurn = false;
 }
 
 function hasAnyValidMove(piece) {
@@ -243,7 +302,9 @@ function updateScore() {
 function startGame() {
   score = 0;
   selectedSlot = null;
+  draggingSlot = null;
   gameOver = false;
+  isResolvingTurn = false;
   statusEl.textContent = "";
   pieceSlots = Array.from({ length: SLOT_COUNT }, randomPiece);
   createBoard();
