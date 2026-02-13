@@ -64,9 +64,8 @@ h1 {
   width: 58px;
   aspect-ratio: 1;
   border-radius: 10px;
-  border: 0;
   background: var(--cell);
-  transition: opacity 0.12s ease, box-shadow 0.12s ease;
+  transition: transform 0.08s ease, opacity 0.12s ease;
 }
 
 .cell.filled {
@@ -75,31 +74,12 @@ h1 {
 
 .cell.preview {
   outline: 2px solid var(--accent);
-  box-shadow: 0 0 0 3px #ffcb5738;
+  transform: scale(0.95);
 }
 
 .cell.invalid {
   outline: 2px solid #ff5f78;
   opacity: 0.85;
-}
-
-.cell.clearing {
-  animation: pop-clear 0.26s ease-out;
-}
-
-@keyframes pop-clear {
-  0% {
-    filter: brightness(1);
-    box-shadow: 0 0 0 rgba(93, 255, 180, 0);
-  }
-  45% {
-    filter: brightness(2.2);
-    box-shadow: 0 0 18px rgba(93, 255, 180, 0.95);
-  }
-  100% {
-    filter: brightness(1);
-    box-shadow: 0 0 0 rgba(93, 255, 180, 0);
-  }
 }
 
 .side-panel {
@@ -116,7 +96,6 @@ h1 {
 
 .pieces {
   display: grid;
-  grid-auto-rows: minmax(68px, auto);
   gap: 12px;
   margin: 10px 0 18px;
 }
@@ -124,19 +103,9 @@ h1 {
 .piece {
   border: 1px solid #314464;
   border-radius: 12px;
-  min-height: 68px;
   padding: 10px;
   cursor: pointer;
   background: #202d46;
-}
-
-.piece-used {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 42px;
-  color: var(--muted);
 }
 
 .piece.selected {

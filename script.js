@@ -29,7 +29,6 @@ const restartBtn = document.getElementById("restartBtn");
 let board = [];
 let pieceSlots = [];
 let selectedSlot = null;
-let draggingSlot = null;
 let score = 0;
 let best = Number(localStorage.getItem("blockBlastBest") || 0);
 let gameOver = false;
@@ -48,25 +47,9 @@ function createBoard() {
       cell.addEventListener("mouseenter", () => showPreview(x, y));
       cell.addEventListener("mouseleave", clearPreview);
       cell.addEventListener("click", () => placeSelectedPiece(x, y));
-      cell.addEventListener("dragover", (event) => {
-        event.preventDefault();
-        if (draggingSlot !== null) showPreview(x, y, draggingSlot);
-      });
-      cell.addEventListener("drop", (event) => {
-        event.preventDefault();
-        if (draggingSlot !== null) {
-          placeSelectedPiece(x, y, draggingSlot);
-          draggingSlot = null;
-        }
-      });
       boardEl.appendChild(cell);
     }
   }
-
-  boardEl.addEventListener("dragend", () => {
-    draggingSlot = null;
-    clearPreview();
-  });
 }
 
 function randomPiece() {
@@ -91,28 +74,10 @@ function renderPieces() {
 
     if (!piece) {
       wrapper.disabled = true;
-      wrapper.innerHTML = '<span class="piece-used">使用済み</span>';
+      wrapper.textContent = "使用済み";
       piecesEl.appendChild(wrapper);
       return;
     }
-
-    wrapper.draggable = true;
-    wrapper.addEventListener("dragstart", (event) => {
-      draggingSlot = index;
-      selectedSlot = index;
-      renderPieces();
-      if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", String(index));
-      }
-      statusEl.textContent = "盤面にドロップして配置";
-    });
-
-    wrapper.addEventListener("dragend", () => {
-      draggingSlot = null;
-      clearPreview();
-      statusEl.textContent = "";
-    });
 
     wrapper.addEventListener("click", () => {
       selectedSlot = selectedSlot === index ? null : index;
@@ -158,11 +123,11 @@ function isValidPlacement(piece, originX, originY) {
   });
 }
 
-function showPreview(originX, originY, slotOverride = selectedSlot) {
+function showPreview(originX, originY) {
   clearPreview();
-  if (slotOverride === null) return;
+  if (selectedSlot === null) return;
 
-  const piece = pieceSlots[slotOverride];
+  const piece = pieceSlots[selectedSlot];
   if (!piece) return;
 
   const valid = isValidPlacement(piece, originX, originY);
@@ -191,17 +156,6 @@ function updateBoardVisual() {
   }
 }
 
-function animateClearedCells(coords) {
-  coords.forEach(([x, y]) => {
-    const cell = boardCell(x, y);
-    if (!cell) return;
-    cell.classList.add("clearing");
-    window.setTimeout(() => {
-      cell.classList.remove("clearing");
-    }, 260);
-  });
-}
-
 function clearLines() {
   const fullRows = [];
   const fullCols = [];
@@ -214,33 +168,25 @@ function clearLines() {
     if (board.every((row) => row[x] === 1)) fullCols.push(x);
   }
 
-  const toClear = new Set();
   fullRows.forEach((row) => {
-    for (let x = 0; x < BOARD_SIZE; x++) {
-      toClear.add(`${x},${row}`);
-      board[row][x] = 0;
-    }
+    for (let x = 0; x < BOARD_SIZE; x++) board[row][x] = 0;
   });
 
   fullCols.forEach((col) => {
-    for (let y = 0; y < BOARD_SIZE; y++) {
-      toClear.add(`${col},${y}`);
-      board[y][col] = 0;
-    }
+    for (let y = 0; y < BOARD_SIZE; y++) board[y][col] = 0;
   });
 
   const lines = fullRows.length + fullCols.length;
   if (lines > 0) {
     score += lines * 25;
     statusEl.textContent = `${lines}ライン消去！`;
-    animateClearedCells([...toClear].map((key) => key.split(",").map(Number)));
   }
 }
 
-function placeSelectedPiece(originX, originY, slotOverride = selectedSlot) {
-  if (gameOver || slotOverride === null) return;
+function placeSelectedPiece(originX, originY) {
+  if (gameOver || selectedSlot === null) return;
 
-  const piece = pieceSlots[slotOverride];
+  const piece = pieceSlots[selectedSlot];
   if (!piece) return;
 
   if (!isValidPlacement(piece, originX, originY)) {
@@ -253,7 +199,7 @@ function placeSelectedPiece(originX, originY, slotOverride = selectedSlot) {
   });
 
   score += piece.blocks.length;
-  pieceSlots[slotOverride] = null;
+  pieceSlots[selectedSlot] = null;
   selectedSlot = null;
 
   clearLines();
@@ -297,7 +243,6 @@ function updateScore() {
 function startGame() {
   score = 0;
   selectedSlot = null;
-  draggingSlot = null;
   gameOver = false;
   statusEl.textContent = "";
   pieceSlots = Array.from({ length: SLOT_COUNT }, randomPiece);
