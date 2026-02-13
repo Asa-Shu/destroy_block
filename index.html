@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Block Blast Lite</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <h1>Block Blast Lite</h1>
+        <div class="scoreboard">
+          <div>Score: <span id="score">0</span></div>
+          <div>Best: <span id="best">0</span></div>
+        </div>
+      </header>
+
+      <section class="game-wrap">
+        <div id="board" class="board" aria-label="game board"></div>
+        <aside class="side-panel">
+          <h2>ピース</h2>
+          <p class="hint">ピースを選んで盤面をクリックして配置。行/列が埋まると消えます。</p>
+          <div id="pieces" class="pieces"></div>
+          <button id="restartBtn" class="btn">リスタート</button>
+          <p id="status" class="status"></p>
+        </aside>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
