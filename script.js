@@ -23,6 +23,10 @@ const boardEl = document.getElementById("board");
 const piecesEl = document.getElementById("pieces");
 const scoreEl = document.getElementById("score");
 const bestEl = document.getElementById("best");
+const comboEl = document.getElementById("combo");
+const goalTextEl = document.getElementById("goalText");
+const goalBarEl = document.getElementById("goalBar");
+const toastLayerEl = document.getElementById("toastLayer");
 const statusEl = document.getElementById("status");
 const restartBtn = document.getElementById("restartBtn");
 
@@ -34,6 +38,9 @@ let score = 0;
 let best = Number(localStorage.getItem("blockBlastBest") || 0);
 let gameOver = false;
 let isResolvingTurn = false;
+let combo = 1;
+
+const { DEFAULT_GOALS, findFullLines, calculateClearGain, getGoalProgress } = window.GameLogic;
 
 function createBoard() {
   board = Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
@@ -191,16 +198,7 @@ function sleep(ms) {
 }
 
 async function clearLines() {
-  const fullRows = [];
-  const fullCols = [];
-
-  for (let y = 0; y < BOARD_SIZE; y++) {
-    if (board[y].every((v) => v === 1)) fullRows.push(y);
-  }
-
-  for (let x = 0; x < BOARD_SIZE; x++) {
-    if (board.every((row) => row[x] === 1)) fullCols.push(x);
-  }
+  const { fullRows, fullCols } = findFullLines(board);
 
   const toClear = new Set();
   fullRows.forEach((row) => {
@@ -211,7 +209,7 @@ async function clearLines() {
   });
 
   const lines = fullRows.length + fullCols.length;
-  if (lines === 0) return;
+  if (lines === 0) return 0;
 
   toClear.forEach((point) => {
     const [x, y] = point.split(",").map(Number);
@@ -228,13 +226,18 @@ async function clearLines() {
     for (let y = 0; y < BOARD_SIZE; y++) board[y][col] = 0;
   });
 
-  score += lines * 25;
-  statusEl.textContent = `${lines}ライン消去！`;
+  const { nextCombo, gained } = calculateClearGain(lines, combo);
+  combo = nextCombo;
+  score += gained;
+  statusEl.textContent = `${lines}ライン消去！ COMBO x${combo}`;
+  showToast(`✨ ${lines}ライン消去 +${gained}pt`);
   updateBoardVisual();
 
   boardEl.querySelectorAll(".clear-burst").forEach((cell) => {
     cell.classList.remove("clear-burst");
   });
+
+  return lines;
 }
 
 async function placePieceFromSlot(slotIndex, originX, originY) {
@@ -260,7 +263,8 @@ async function placePieceFromSlot(slotIndex, originX, originY) {
   draggingSlot = null;
 
   updateBoardVisual();
-  await clearLines();
+  const linesCleared = await clearLines();
+  if (linesCleared === 0) combo = 1;
   refillPieces();
   renderPieces();
   updateScore();
@@ -290,13 +294,33 @@ function checkGameOver() {
   }
 }
 
+
+function updateGoalProgress() {
+  const goal = getGoalProgress(score, DEFAULT_GOALS);
+  goalTextEl.textContent = goal.text;
+  goalBarEl.style.width = `${goal.progress * 100}%`;
+}
+
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = message;
+  toastLayerEl.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 1400);
+}
+
 function updateScore() {
   scoreEl.textContent = String(score);
+  comboEl.textContent = `x${combo}`;
   if (score > best) {
     best = score;
     localStorage.setItem("blockBlastBest", String(best));
   }
   bestEl.textContent = String(best);
+  updateGoalProgress();
 }
 
 function startGame() {
@@ -305,6 +329,7 @@ function startGame() {
   draggingSlot = null;
   gameOver = false;
   isResolvingTurn = false;
+  combo = 1;
   statusEl.textContent = "";
   pieceSlots = Array.from({ length: SLOT_COUNT }, randomPiece);
   createBoard();

@@ -13,6 +13,7 @@
         <div class="scoreboard">
           <div>Score: <span id="score">0</span></div>
           <div>Best: <span id="best">0</span></div>
+          <div>Combo: <span id="combo">x1</span></div>
         </div>
       </header>
 
@@ -22,12 +23,22 @@
           <h2>ピース</h2>
           <p class="hint">ピースをクリックまたはドラッグして配置。行/列が埋まると派手に消えます。</p>
           <div id="pieces" class="pieces"></div>
+          <section class="goal-card" aria-live="polite">
+            <h3>ミッション進捗</h3>
+            <p id="goalText" class="goal-text"></p>
+            <div class="goal-track">
+              <div id="goalBar" class="goal-bar"></div>
+            </div>
+          </section>
           <button id="restartBtn" class="btn">リスタート</button>
           <p id="status" class="status"></p>
         </aside>
       </section>
     </main>
 
+    <div id="toastLayer" class="toast-layer" aria-live="polite"></div>
+
+    <script src="game_logic.js"></script>
     <script src="script.js"></script>
   </body>
 </html>
