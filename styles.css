@@ -46,22 +46,29 @@ h1 {
 
 .game-wrap {
   display: grid;
-  grid-template-columns: auto 320px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   gap: 20px;
+  align-items: start;
 }
 
 .board {
+  --board-gap: 6px;
+  --board-pad: 14px;
+  width: min(100%, 520px);
+  aspect-ratio: 1 / 1;
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 58px));
-  gap: 6px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(8, minmax(0, 1fr));
+  gap: var(--board-gap);
   background: var(--panel);
-  padding: 14px;
+  padding: var(--board-pad);
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
 }
 
 .cell {
-  width: 58px;
+  width: 100%;
+  height: 100%;
   aspect-ratio: 1;
   border-radius: 10px;
   background: var(--cell);
@@ -186,16 +193,78 @@ h1 {
   color: var(--muted);
 }
 
+.goal-card {
+  background: #19263d;
+  border: 1px solid #2d4268;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.goal-card h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.goal-text {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.goal-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #0f1829;
+}
+
+.goal-bar {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #5ad0ff, #8cffcf);
+  transition: width 0.2s ease;
+}
+
+.toast-layer {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: grid;
+  gap: 8px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.toast {
+  background: rgba(9, 14, 27, 0.9);
+  border: 1px solid #2e466f;
+  color: #dff3ff;
+  padding: 10px 12px;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
+  animation: toastIn 0.2s ease;
+}
+
+@keyframes toastIn {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 @media (max-width: 960px) {
   .game-wrap {
     grid-template-columns: 1fr;
   }
 
   .board {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-  }
-
-  .cell {
-    width: 100%;
+    width: min(100%, 640px);
+    margin-inline: auto;
   }
 }
